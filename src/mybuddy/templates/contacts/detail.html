@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.name }} — MyBuddy{% endblock %}
+{% block content %}
+<div class="actions-bar">
+    <h2>{{ contact.name }}</h2>
+    <button class="outline secondary"
+            hx-delete="/contacts/{{ contact.id }}"
+            hx-confirm="Delete this contact and all their reminders?">Delete</button>
+</div>
+
+<article>
+    <dl>
+        <dt>Phone</dt>
+        <dd>{{ contact.phone or 'Not provided' }}</dd>
+        <dt>Email</dt>
+        <dd>{{ contact.email or 'Not provided' }}</dd>
+    </dl>
+</article>
+
+{% if notes %}
+<h3>Linked Notes</h3>
+<ul>
+    {% for note in notes %}
+    <li><a href="/notes/{{ note.id }}">{{ note.title }}</a> <small>({{ note.created_at }})</small></li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if reminders %}
+<h3>Reminders</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Message</th>
+            <th>Due Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in reminders %}
+        <tr>
+            <td><span class="tag">{{ r.reminder_type }}</span></td>
+            <td>{{ r.message }}</td>
+            <td>{{ r.due_date or '—' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

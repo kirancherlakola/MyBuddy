@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+
+from mybuddy.db import get_db, init_db, DB_PATH
+import mybuddy.db as db_module
+
+
+@pytest.fixture(autouse=True)
+def use_temp_db(tmp_path, monkeypatch):
+    """Use a temporary database for each test."""
+    test_db = tmp_path / "test.db"
+    monkeypatch.setattr(db_module, "DB_PATH", test_db)
+    init_db(test_db)
+    return test_db
+
+
+@pytest.fixture
+def client():
+    from mybuddy.web import create_app
+
+    app = create_app()
+    return TestClient(app)
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_index_redirects_to_notes(mock_extract, client):
+    resp = client.get("/", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/notes"
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_notes_list_empty(mock_extract, client):
+    resp = client.get("/notes")
+    assert resp.status_code == 200
+    assert "No notes yet" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_create_and_view_note(mock_extract, client):
+    resp = client.post(
+        "/notes",
+        data={"title": "Test Note", "content": "Call Sarah on Monday"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    mock_extract.assert_called_once()
+
+    # Follow redirect to note detail
+    location = resp.headers["location"]
+    resp = client.get(location)
+    assert resp.status_code == 200
+    assert "Test Note" in resp.text
+    assert "Call Sarah on Monday" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_edit_note(mock_extract, client):
+    # Create
+    client.post("/notes", data={"title": "Old", "content": "old"}, follow_redirects=True)
+
+    # Edit form
+    resp = client.get("/notes/1/edit")
+    assert resp.status_code == 200
+    assert "Old" in resp.text
+
+    # Update
+    resp = client.post(
+        "/notes/1/update",
+        data={"title": "New", "content": "new"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    resp = client.get("/notes/1")
+    assert "New" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_delete_note(mock_extract, client):
+    client.post("/notes", data={"title": "Delete Me", "content": "bye"}, follow_redirects=True)
+
+    resp = client.delete("/notes/1")
+    assert resp.status_code == 200
+
+    resp = client.get("/notes/1")
+    assert resp.status_code == 404
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_actions_list(mock_extract, client, use_temp_db):
+    # Insert test data directly
+    with get_db(use_temp_db) as db:
+        cur = db.execute("INSERT INTO notes (title, content) VALUES (?, ?)", ("N", "C"))
+        note_id = cur.lastrowid
+        db.execute(
+            "INSERT INTO action_items (note_id, description) VALUES (?, ?)",
+            (note_id, "Review proposal"),
+        )
+
+    resp = client.get("/actions")
+    assert resp.status_code == 200
+    assert "Review proposal" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_toggle_action(mock_extract, client, use_temp_db):
+    with get_db(use_temp_db) as db:
+        cur = db.execute("INSERT INTO notes (title, content) VALUES (?, ?)", ("N", "C"))
+        note_id = cur.lastrowid
+        db.execute(
+            "INSERT INTO action_items (note_id, description) VALUES (?, ?)",
+            (note_id, "Task 1"),
+        )
+
+    resp = client.post("/actions/1/toggle")
+    assert resp.status_code == 200
+    assert "checked" in resp.text
+
+    resp = client.post("/actions/1/toggle")
+    assert resp.status_code == 200
+    assert "checked" not in resp.text or resp.text.count("checked") == 0
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_contacts_list(mock_extract, client, use_temp_db):
+    with get_db(use_temp_db) as db:
+        db.execute("INSERT INTO contacts (name, phone) VALUES (?, ?)", ("Sarah", "555-1234"))
+
+    resp = client.get("/contacts")
+    assert resp.status_code == 200
+    assert "Sarah" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_contact_detail(mock_extract, client, use_temp_db):
+    with get_db(use_temp_db) as db:
+        db.execute("INSERT INTO contacts (name, phone) VALUES (?, ?)", ("Sarah", "555-1234"))
+
+    resp = client.get("/contacts/1")
+    assert resp.status_code == 200
+    assert "Sarah" in resp.text
+    assert "555-1234" in resp.text

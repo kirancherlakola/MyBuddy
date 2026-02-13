@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Notes — MyBuddy{% endblock %}
+{% block content %}
+<div class="actions-bar">
+    <h2>Notes</h2>
+    <a href="/notes/new" role="button">+ New Note</a>
+</div>
+
+{% if notes %}
+<table>
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for note in notes %}
+        <tr>
+            <td><a href="/notes/{{ note.id }}">{{ note.title }}</a></td>
+            <td>{{ note.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No notes yet. <a href="/notes/new">Create your first note</a>.</p>
+{% endif %}
+{% endblock %}

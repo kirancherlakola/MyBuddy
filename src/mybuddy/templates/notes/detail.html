@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ note.title }} — MyBuddy{% endblock %}
+{% block content %}
+<div class="actions-bar">
+    <h2>{{ note.title }}</h2>
+    <div>
+        <a href="/notes/{{ note.id }}/edit" role="button" class="outline">Edit</a>
+        <button class="outline secondary"
+                hx-delete="/notes/{{ note.id }}"
+                hx-confirm="Delete this note and all its extracted data?">Delete</button>
+    </div>
+</div>
+
+<article>
+    <p style="white-space: pre-wrap;">{{ note.content }}</p>
+    <footer>
+        <small>Created {{ note.created_at }} · Updated {{ note.updated_at }}</small>
+    </footer>
+</article>
+
+{% if action_items or contacts or reminders %}
+<div class="extracted-info">
+    <h3>AI Extracted Info</h3>
+
+    {% if action_items %}
+    <h4>Action Items</h4>
+    <ul>
+        {% for item in action_items %}
+        <li>
+            <label>
+                <input type="checkbox" {% if item.is_completed %}checked{% endif %}
+                       hx-post="/actions/{{ item.id }}/toggle"
+                       hx-swap="none">
+                {{ item.description }}
+                {% if item.due_date %}<small>(Due: {{ item.due_date }})</small>{% endif %}
+            </label>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if contacts %}
+    <h4>Contacts</h4>
+    <ul>
+        {% for contact in contacts %}
+        <li><a href="/contacts/{{ contact.id }}">{{ contact.name }}</a>
+            {% if contact.phone %} — {{ contact.phone }}{% endif %}
+            {% if contact.email %} — {{ contact.email }}{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if reminders %}
+    <h4>Reminders</h4>
+    <ul>
+        {% for r in reminders %}
+        <li>
+            <span class="tag">{{ r.reminder_type }}</span>
+            {{ r.message }} ({{ r.contact_name }})
+            {% if r.due_date %}<small>Due: {{ r.due_date }}</small>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{% if note %}Edit Note{% else %}New Note{% endif %} — MyBuddy{% endblock %}
+{% block content %}
+<h2>{% if note %}Edit Note{% else %}New Note{% endif %}</h2>
+
+<form method="post" action="{% if note %}/notes/{{ note.id }}/update{% else %}/notes{% endif %}">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="{{ note.title if note else '' }}" required placeholder="Meeting with Sarah about project">
+
+    <label for="content">Content</label>
+    <textarea id="content" name="content" rows="10" placeholder="Write your notes here...">{{ note.content if note else '' }}</textarea>
+
+    <div class="actions-bar">
+        <a href="{% if note %}/notes/{{ note.id }}{% else %}/notes{% endif %}">Cancel</a>
+        <button type="submit">{% if note %}Update{% else %}Create{% endif %} Note</button>
+    </div>
+</form>
+{% endblock %}

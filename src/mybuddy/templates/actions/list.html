@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Action Items — MyBuddy{% endblock %}
+{% block content %}
+<h2>Action Items</h2>
+
+<div class="actions-bar">
+    <div>
+        <a href="/actions?filter=all" role="button" class="{% if filter == 'all' %}{% else %}outline{% endif %} secondary">All</a>
+        <a href="/actions?filter=pending" role="button" class="{% if filter == 'pending' %}{% else %}outline{% endif %} secondary">Pending</a>
+        <a href="/actions?filter=completed" role="button" class="{% if filter == 'completed' %}{% else %}outline{% endif %} secondary">Completed</a>
+    </div>
+</div>
+
+{% if actions %}
+<table>
+    <thead>
+        <tr>
+            <th>Done</th>
+            <th>Description</th>
+            <th>Due Date</th>
+            <th>Note</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for action in actions %}
+        <tr id="action-{{ action.id }}">
+            <td>
+                <input type="checkbox" {% if action.is_completed %}checked{% endif %}
+                       hx-post="/actions/{{ action.id }}/toggle"
+                       hx-target="#action-{{ action.id }}"
+                       hx-swap="outerHTML">
+            </td>
+            <td>{{ action.description }}</td>
+            <td>{{ action.due_date or '—' }}</td>
+            <td><a href="/notes/{{ action.note_id }}">{{ action.note_title }}</a></td>
+            <td>
+                {% if action.is_completed %}
+                <span class="tag completed">completed</span>
+                {% else %}
+                <span class="tag pending">pending</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No action items found.</p>
+{% endif %}
+{% endblock %}
