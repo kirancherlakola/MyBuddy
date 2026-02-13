@@ -5,7 +5,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
-DB_PATH = Path("mybuddy.db")
+DB_DIR = Path.home() / ".mybuddy"
+DB_PATH = DB_DIR / "mybuddy.db"
 
 SCHEMA = """\
 CREATE TABLE IF NOT EXISTS notes (
@@ -57,7 +58,9 @@ def _connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 
 def init_db(db_path: Path | None = None) -> None:
-    conn = _connect(db_path)
+    target = db_path or DB_PATH
+    target.parent.mkdir(parents=True, exist_ok=True)
+    conn = _connect(target)
     conn.executescript(SCHEMA)
     conn.close()
 
