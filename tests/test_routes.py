@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -147,3 +148,54 @@ def test_contact_detail(mock_extract, client, use_temp_db):
     assert resp.status_code == 200
     assert "Sarah" in resp.text
     assert "555-1234" in resp.text
+
+
+# --- OCR image upload tests ---
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_ocr_missing_api_key(mock_extract, client, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    fake_image = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    resp = client.post(
+        "/notes/ocr-image",
+        files={"file": ("test.png", fake_image, "image/png")},
+    )
+    assert resp.status_code == 422
+    assert "ANTHROPIC_API_KEY" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_ocr_invalid_file_type(mock_extract, client):
+    fake_file = io.BytesIO(b"%PDF-1.4 fake pdf content")
+    resp = client.post(
+        "/notes/ocr-image",
+        files={"file": ("test.pdf", fake_file, "application/pdf")},
+    )
+    assert resp.status_code == 422
+    assert "Unsupported file type" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_ocr_file_too_large(mock_extract, client, monkeypatch):
+    monkeypatch.setattr("mybuddy.routes.notes._MAX_IMAGE_SIZE", 100)
+    fake_image = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 200)
+    resp = client.post(
+        "/notes/ocr-image",
+        files={"file": ("test.png", fake_image, "image/png")},
+    )
+    assert resp.status_code == 422
+    assert "too large" in resp.text
+
+
+@patch("mybuddy.routes.notes.extract_text_from_image", new_callable=AsyncMock)
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_ocr_successful_extraction(mock_extract, mock_ocr, client):
+    mock_ocr.return_value = "Hello from handwritten notes"
+    fake_image = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    resp = client.post(
+        "/notes/ocr-image",
+        files={"file": ("test.png", fake_image, "image/png")},
+    )
+    assert resp.status_code == 200
+    assert "Hello from handwritten notes" in resp.text
+    assert "ocr-success" in resp.text

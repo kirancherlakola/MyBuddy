@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -237,3 +238,41 @@ def _save_extractions(note_id: int, data: dict) -> None:
                     "INSERT INTO reminders (contact_id, reminder_type, message, due_date) VALUES (?, ?, ?, ?)",
                     (cid, r.get("type", "follow_up"), r.get("message", ""), r.get("due_date", "")),
                 )
+
+
+async def extract_text_from_image(image_bytes: bytes, media_type: str) -> str:
+    """Use Claude vision API to extract text from an image."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY is required for image text extraction")
+
+    image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
+    client = anthropic.Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": image_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract all text from this image. Preserve the original "
+                            "structure, line breaks, and formatting as closely as possible. "
+                            "Return only the extracted text with no additional commentary."
+                        ),
+                    },
+                ],
+            }
+        ],
+    )
+    return message.content[0].text

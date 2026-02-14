@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, Request
+import logging
+
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from mybuddy.db import get_db
-from mybuddy.services.ai import extract_from_note
+from mybuddy.services.ai import extract_from_note, extract_text_from_image
+
+logger = logging.getLogger(__name__)
+
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+_MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -28,6 +35,47 @@ async def list_notes(request: Request):
 async def new_note(request: Request):
     return _templates(request).TemplateResponse(
         request, "notes/form.html", {"note": None, "active": "notes"}
+    )
+
+
+@router.post("/ocr-image", response_class=HTMLResponse)
+async def ocr_image(request: Request, file: UploadFile = File(...)):
+    # Validate content type
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        return HTMLResponse(
+            '<div class="ocr-error" role="alert">Unsupported file type. Please upload a JPEG, PNG, GIF, or WebP image.</div>',
+            status_code=422,
+        )
+
+    # Read and validate size
+    image_bytes = await file.read()
+    if len(image_bytes) > _MAX_IMAGE_SIZE:
+        return HTMLResponse(
+            '<div class="ocr-error" role="alert">Image too large. Maximum size is 5 MB.</div>',
+            status_code=422,
+        )
+
+    try:
+        text = await extract_text_from_image(image_bytes, file.content_type)
+    except ValueError as exc:
+        return HTMLResponse(
+            f'<div class="ocr-error" role="alert">{exc}</div>',
+            status_code=422,
+        )
+    except Exception:
+        logger.exception("OCR extraction failed")
+        return HTMLResponse(
+            '<div class="ocr-error" role="alert">Text extraction failed. Please try again.</div>',
+            status_code=500,
+        )
+
+    escaped = text.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+    return HTMLResponse(
+        f'<div class="ocr-success">Text extracted successfully.</div>'
+        f"<script>"
+        f"(function(){{ var ta=document.getElementById('content'); var extracted=`{escaped}`;"
+        f" if(ta.value.trim()) ta.value += '\\n\\n---\\n\\n' + extracted; else ta.value = extracted; }})()"
+        f"</script>"
     )
 
 

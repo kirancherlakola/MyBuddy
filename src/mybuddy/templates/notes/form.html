@@ -3,6 +3,17 @@
 {% block content %}
 <h2>{% if note %}Edit Note{% else %}New Note{% endif %}</h2>
 
+<details>
+    <summary>Upload image for text extraction</summary>
+    <form hx-post="/notes/ocr-image" hx-encoding="multipart/form-data" hx-target="#ocr-result" hx-indicator="#ocr-spinner">
+        <label for="file">Select an image (JPEG, PNG, GIF, or WebP, max 5 MB)</label>
+        <input type="file" id="file" name="file" accept="image/jpeg,image/png,image/gif,image/webp" required>
+        <button type="submit">Extract Text</button>
+        <span id="ocr-spinner" class="htmx-indicator" aria-busy="true">Extracting text...</span>
+    </form>
+    <div id="ocr-result"></div>
+</details>
+
 <form method="post" action="{% if note %}/notes/{{ note.id }}/update{% else %}/notes{% endif %}">
     <label for="title">Title</label>
     <input type="text" id="title" name="title" value="{{ note.title if note else '' }}" required placeholder="Meeting with Sarah about project">
