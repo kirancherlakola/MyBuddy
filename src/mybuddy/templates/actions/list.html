@@ -9,6 +9,9 @@
         <a href="/actions?filter=pending" role="button" class="{% if filter == 'pending' %}{% else %}outline{% endif %} secondary">Pending</a>
         <a href="/actions?filter=completed" role="button" class="{% if filter == 'completed' %}{% else %}outline{% endif %} secondary">Completed</a>
     </div>
+    {% if actions %}
+    <button class="outline contrast" hx-delete="/actions" hx-confirm="Delete ALL action items? This cannot be undone.">Delete All</button>
+    {% endif %}
 </div>
 
 {% if actions %}

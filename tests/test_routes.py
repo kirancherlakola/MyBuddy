@@ -111,6 +111,23 @@ def test_actions_list(mock_extract, client, use_temp_db):
 
 
 @patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
+def test_delete_all_actions(mock_extract, client, use_temp_db):
+    with get_db(use_temp_db) as db:
+        cur = db.execute("INSERT INTO notes (title, content) VALUES (?, ?)", ("N", "C"))
+        note_id = cur.lastrowid
+        db.execute("INSERT INTO action_items (note_id, description) VALUES (?, ?)", (note_id, "Task 1"))
+        db.execute("INSERT INTO action_items (note_id, description) VALUES (?, ?)", (note_id, "Task 2"))
+
+    resp = client.delete("/actions")
+    assert resp.status_code == 200
+
+    # Verify all action items are gone
+    with get_db(use_temp_db) as db:
+        count = db.execute("SELECT COUNT(*) as c FROM action_items").fetchone()["c"]
+    assert count == 0
+
+
+@patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
 def test_toggle_action(mock_extract, client, use_temp_db):
     with get_db(use_temp_db) as db:
         cur = db.execute("INSERT INTO notes (title, content) VALUES (?, ?)", ("N", "C"))
@@ -154,14 +171,14 @@ def test_contact_detail(mock_extract, client, use_temp_db):
 
 @patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
 def test_ocr_missing_api_key(mock_extract, client, monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     fake_image = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
     resp = client.post(
         "/notes/ocr-image",
         files={"file": ("test.png", fake_image, "image/png")},
     )
     assert resp.status_code == 422
-    assert "ANTHROPIC_API_KEY" in resp.text
+    assert "OPENAI_API_KEY" in resp.text
 
 
 @patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)

@@ -241,26 +241,26 @@ def _save_extractions(note_id: int, data: dict) -> None:
 
 
 async def extract_text_from_image(image_bytes: bytes, media_type: str) -> str:
-    """Use Claude vision API to extract text from an image."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    """Use OpenAI gpt-4o-mini vision API to extract text from an image."""
+    import openai
+
+    api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY is required for image text extraction")
+        raise ValueError("OPENAI_API_KEY is required for image text extraction")
 
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+    client = openai.OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
         max_tokens=4096,
         messages=[
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_data,
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{media_type};base64,{image_data}",
                         },
                     },
                     {
@@ -275,4 +275,4 @@ async def extract_text_from_image(image_bytes: bytes, media_type: str) -> str:
             }
         ],
     )
-    return message.content[0].text
+    return response.choices[0].message.content

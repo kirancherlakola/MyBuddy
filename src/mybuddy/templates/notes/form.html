@@ -3,8 +3,8 @@
 {% block content %}
 <h2>{% if note %}Edit Note{% else %}New Note{% endif %}</h2>
 
-<details>
-    <summary>Upload image for text extraction</summary>
+<details open class="ocr-upload">
+    <summary>📷 Upload image for text extraction</summary>
     <form hx-post="/notes/ocr-image" hx-encoding="multipart/form-data" hx-target="#ocr-result" hx-indicator="#ocr-spinner">
         <label for="file">Select an image (JPEG, PNG, GIF, or WebP, max 5 MB)</label>
         <input type="file" id="file" name="file" accept="image/jpeg,image/png,image/gif,image/webp" required>

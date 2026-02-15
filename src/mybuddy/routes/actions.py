@@ -75,3 +75,10 @@ async def delete_action(request: Request, action_id: int):
     with get_db() as db:
         db.execute("DELETE FROM action_items WHERE id = ?", (action_id,))
     return HTMLResponse("")
+
+
+@router.delete("")
+async def delete_all_actions(request: Request):
+    with get_db() as db:
+        db.execute("DELETE FROM action_items")
+    return HTMLResponse(headers={"HX-Redirect": "/actions"})
