@@ -111,20 +111,21 @@ def test_actions_list(mock_extract, client, use_temp_db):
 
 
 @patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)
-def test_delete_all_actions(mock_extract, client, use_temp_db):
+def test_delete_completed_actions(mock_extract, client, use_temp_db):
     with get_db(use_temp_db) as db:
         cur = db.execute("INSERT INTO notes (title, content) VALUES (?, ?)", ("N", "C"))
         note_id = cur.lastrowid
-        db.execute("INSERT INTO action_items (note_id, description) VALUES (?, ?)", (note_id, "Task 1"))
-        db.execute("INSERT INTO action_items (note_id, description) VALUES (?, ?)", (note_id, "Task 2"))
+        db.execute("INSERT INTO action_items (note_id, description, is_completed) VALUES (?, ?, 1)", (note_id, "Done task"))
+        db.execute("INSERT INTO action_items (note_id, description, is_completed) VALUES (?, ?, 0)", (note_id, "Pending task"))
 
     resp = client.delete("/actions")
     assert resp.status_code == 200
 
-    # Verify all action items are gone
+    # Only completed items should be deleted, pending remains
     with get_db(use_temp_db) as db:
-        count = db.execute("SELECT COUNT(*) as c FROM action_items").fetchone()["c"]
-    assert count == 0
+        rows = db.execute("SELECT description FROM action_items").fetchall()
+    assert len(rows) == 1
+    assert rows[0]["description"] == "Pending task"
 
 
 @patch("mybuddy.routes.notes.extract_from_note", new_callable=AsyncMock)

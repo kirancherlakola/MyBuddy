@@ -241,7 +241,7 @@ def _save_extractions(note_id: int, data: dict) -> None:
 
 
 async def extract_text_from_image(image_bytes: bytes, media_type: str) -> str:
-    """Use OpenAI gpt-4o-mini vision API to extract text from an image."""
+    """Use OpenAI gpt-5.2 vision API to extract text from an image."""
     import openai
 
     api_key = os.environ.get("OPENAI_API_KEY", "")
@@ -251,8 +251,8 @@ async def extract_text_from_image(image_bytes: bytes, media_type: str) -> str:
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
     client = openai.OpenAI(api_key=api_key)
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        max_tokens=4096,
+        model="gpt-5.2",
+        max_completion_tokens=4096,
         messages=[
             {
                 "role": "user",

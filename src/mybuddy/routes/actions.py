@@ -78,7 +78,7 @@ async def delete_action(request: Request, action_id: int):
 
 
 @router.delete("")
-async def delete_all_actions(request: Request):
+async def delete_completed_actions(request: Request):
     with get_db() as db:
-        db.execute("DELETE FROM action_items")
+        db.execute("DELETE FROM action_items WHERE is_completed = 1")
     return HTMLResponse(headers={"HX-Redirect": "/actions"})

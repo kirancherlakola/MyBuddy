@@ -10,7 +10,7 @@
         <a href="/actions?filter=completed" role="button" class="{% if filter == 'completed' %}{% else %}outline{% endif %} secondary">Completed</a>
     </div>
     {% if actions %}
-    <button class="outline contrast" hx-delete="/actions" hx-confirm="Delete ALL action items? This cannot be undone.">Delete All</button>
+    <button class="outline contrast" hx-delete="/actions" hx-confirm="Delete all checked action items? This cannot be undone.">Delete Checked</button>
     {% endif %}
 </div>
 
